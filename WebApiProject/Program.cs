@@ -13,9 +13,8 @@ using WebApiProject.Models.Context;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
+builder.Services.AddAuthorization();
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<DbApiProjectContext>(options =>
@@ -49,9 +48,8 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<RoleInitializer>();
-
-
 builder.Services.AddScoped<IShoppingCartService, ShoppingCartService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("NewPolicy", app =>
@@ -60,15 +58,16 @@ builder.Services.AddCors(options =>
     });
 });
 
-
 var app = builder.Build();
 
+// Initializing roles
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var utilities = services.GetRequiredService<Utilities>(); // Obtener la instancia de Utilities
-    await RoleInitializer.Initialize(services, utilities); // Llamar al método Initialize
+    var utilities = services.GetRequiredService<Utilities>();
+    await RoleInitializer.Initialize(services, utilities);
 }
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -76,10 +75,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("NewPolicy");
-app.UseAuthentication();
+// Order of middleware is important
 app.UseHttpsRedirection();
+app.UseCors("NewPolicy");
 app.UseRouting();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

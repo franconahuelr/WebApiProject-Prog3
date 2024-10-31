@@ -1,17 +1,14 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using WebApiProject.Interfaces;
 using WebApiProject.Models.DTOs;
-using WebApiProject.Models.Entities;
+
 
 namespace WebApiProject.Controllers {
 
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "user")]
+   
     public class ShoppingCartController : ControllerBase
     {
         private readonly IShoppingCartService _shoppingCartService;
@@ -22,6 +19,7 @@ namespace WebApiProject.Controllers {
         }
 
         [HttpGet("{userId}")]
+        [Authorize(Roles = "user")]
         public async Task<ActionResult<ShoppingCartDto>> GetCart(string userId)
         {
             var cart = await _shoppingCartService.GetCartAsync(userId);
@@ -32,9 +30,9 @@ namespace WebApiProject.Controllers {
 
             return Ok(new ShoppingCartDto
             {
-                Id = cart.Id,
+                IdCart = cart.IdCart,
                 UserId = cart.UserId,
-                Items = cart.Items.Select(i => new CartItemDto
+                CartItems = cart.CartItems.Select(i => new CartItemDto
                 {
                     ProductId = i.ProductId,
                     Quantity = i.Quantity
@@ -43,6 +41,7 @@ namespace WebApiProject.Controllers {
         }
 
         [HttpPost("{userId}/items")]
+        [Authorize(Roles = "user")]
         public async Task<ActionResult<CartItemDto>> AddItem(string userId, [FromBody] CartItemDto itemDto)
         {
             try
@@ -57,6 +56,7 @@ namespace WebApiProject.Controllers {
         }
 
         [HttpPut("{userId}")]
+        [Authorize(Roles = "user")]
         public async Task<ActionResult> UpdateCart(string userId, [FromBody] ShoppingCartDto cartDto)
         {
             await _shoppingCartService.UpdateCartAsync(userId, cartDto);
@@ -64,6 +64,7 @@ namespace WebApiProject.Controllers {
         }
 
         [HttpDelete("{userId}")]
+        [Authorize(Roles = "user")]
         public async Task<ActionResult> DeleteCart(string userId)
         {
             await _shoppingCartService.DeleteCartAsync(userId);

@@ -20,8 +20,6 @@ public partial class DbApiProjectContext : IdentityDbContext<IdentityUser, Ident
 
     public virtual DbSet<Product> Products { get; set; }
 
-    //public virtual DbSet<UserData> UserDatas { get; set; }
-
     public virtual DbSet<ShoppingCart> ShoppingCarts { get; set; }
     public virtual DbSet<CartItem> CartItems { get; set; }
 
@@ -30,6 +28,8 @@ public partial class DbApiProjectContext : IdentityDbContext<IdentityUser, Ident
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Configuración para la entidad Product
         modelBuilder.Entity<Product>(entity =>
         {
             entity.HasKey(e => e.IdProduct).HasName("PK__Product__2E8946D48FB3A361");
@@ -45,27 +45,33 @@ public partial class DbApiProjectContext : IdentityDbContext<IdentityUser, Ident
             entity.Property(e => e.Price).HasColumnType("decimal(10, 2)");
         });
 
-       // modelBuilder.Entity<UserData>(entity =>
-       // {
-        //    entity.HasKey(e => e.IdUser).HasName("PK__UserData__B7C926385C59E4A3");
+        // Configuración para la entidad ShoppingCart
+        modelBuilder.Entity<ShoppingCart>(entity =>
+        {
+            entity.HasKey(e => e.IdCart).HasName("PK__ShoppingCart__123456");
 
-        //    entity.Property(e => e.Email)
-         //       .HasMaxLength(50)
-        //        .IsUnicode(false);
-       //     entity.Property(e => e.UserName)
-       //         .HasMaxLength(50)
-      //          .IsUnicode(false);
-      //      entity.Property(e => e.Password)
-       //         .HasMaxLength(100)
-       //         .IsUnicode(false);
-     //   });
+            entity.ToTable("ShoppingCart");
 
-        modelBuilder.Entity<CartItem>()
-            .HasOne(ci => ci.Product)
-            .WithMany()
-            .HasForeignKey(ci => ci.ProductId);
-      OnModelCreatingPartial(modelBuilder);
+            entity.Property(e => e.UserId)
+                .IsRequired()
+                .HasMaxLength(450); // Longitud típica para UserId en Identity
+
+            // Configuración de la relación con CartItems
+            entity.HasMany(sc => sc.CartItems)
+                .WithOne(ci => ci.ShoppingCart)
+                .OnDelete(DeleteBehavior.Cascade); 
+        });
+
+        // Configuración para la entidad CartItem
+        modelBuilder.Entity<CartItem>(entity =>
+        {
+            entity.HasKey(e => e.IdCartItem); 
+
+            entity.HasOne(ci => ci.Product)
+                .WithMany()
+                .HasForeignKey(ci => ci.ProductId)
+                .OnDelete(DeleteBehavior.Cascade); 
+        });
+
     }
-
-    partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }

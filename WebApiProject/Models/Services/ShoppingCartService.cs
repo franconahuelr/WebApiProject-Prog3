@@ -6,6 +6,7 @@ using WebApiProject.Interfaces;
 using WebApiProject.Models.Context;
 using WebApiProject.Models.DTOs;
 using WebApiProject.Models.Entities;
+
 namespace WebApiProject.Models
 {
     public class ShoppingCartService : IShoppingCartService
@@ -17,89 +18,64 @@ namespace WebApiProject.Models
             _dbApiProjectContext = dbApiProjectContext;
         }
 
+        // Crea un nuevo carrito de compras
+        public async Task<ShoppingCart> CreateCartAsync(string userId)
+        {
+            var cart = new ShoppingCart { UserId = userId };
+            await _dbApiProjectContext.ShoppingCarts.AddAsync(cart);
+            await _dbApiProjectContext.SaveChangesAsync();
+            return cart;
+        }
+
         // Obtiene el carrito de compras de un usuario
         public async Task<ShoppingCart> GetCartAsync(string userId)
         {
             return await _dbApiProjectContext.ShoppingCarts
-                .Include(c => c.Items)
-                .ThenInclude(i => i.Product) // Incluye la información del producto
+                .Include(c => c.CartItems)
+                .ThenInclude(i => i.Product)
                 .FirstOrDefaultAsync(c => c.UserId == userId);
         }
 
-        // Crea un nuevo carrito de compras o agrega un producto al carrito existente
+        // Agrega un artículo al carrito
         public async Task<CartItem> AddItemToCartAsync(string userId, CartItemDto itemDto)
         {
             var product = await _dbApiProjectContext.Products.FindAsync(itemDto.ProductId);
             if (product == null)
-            {
                 throw new ArgumentException("El producto no existe.");
-            }
 
-            var cart = await _dbApiProjectContext.ShoppingCarts
-                .Include(c => c.Items)
-                .FirstOrDefaultAsync(c => c.UserId == userId);
+            var cart = await GetCartAsync(userId) ?? await CreateCartAsync(userId);
 
-            if (cart == null)
-            {
-                cart = new ShoppingCart { UserId = userId };
-                _dbApiProjectContext.ShoppingCarts.Add(cart);
-            }
-
-            var cartItem = cart.Items.FirstOrDefault(i => i.ProductId == itemDto.ProductId);
+            var cartItem = cart.CartItems.FirstOrDefault(i => i.ProductId == itemDto.ProductId);
             if (cartItem != null)
             {
                 cartItem.Quantity += itemDto.Quantity; // Actualiza la cantidad si ya existe
             }
             else
             {
-                cart.Items.Add(item: new CartItem { ProductId = itemDto.ProductId, Quantity = itemDto.Quantity, Product=product });
-            }
-
-            await _dbApiProjectContext.SaveChangesAsync(); // Guarda los cambios en la base de datos
-            return cart.Items.FirstOrDefault(i => i.ProductId == itemDto.ProductId);
-        }
-
-        // Actualiza un item en el carrito
-        public async Task UpdateCartItemAsync(string userId, CartItemDto itemDto)
-        {
-            var cart = await _dbApiProjectContext.ShoppingCarts
-                .Include(c => c.Items)
-                .FirstOrDefaultAsync(c => c.UserId == userId);
-
-            if (cart == null)
-            {
-                throw new ArgumentException("Carrito no encontrado.");
-            }
-
-            var cartItem = cart.Items.FirstOrDefault(i => i.ProductId == itemDto.ProductId);
-            if (cartItem != null)
-            {
-                cartItem.Quantity = itemDto.Quantity; // Actualiza la cantidad
-            }
-            else
-            {
-                throw new ArgumentException("El producto no está en el carrito.");
+                cartItem = new CartItem
+                {
+                    ProductId = itemDto.ProductId,
+                    Quantity = itemDto.Quantity,
+                    Product = product
+                };
+                cart.CartItems.Add(cartItem);
             }
 
             await _dbApiProjectContext.SaveChangesAsync();
+            return cartItem;
         }
 
-        //Elimina un item del carrito
-      public async Task RemoveItemFromCartAsync(string userId, int productId)
+        // Quita un artículo del carrito
+        public async Task RemoveItemFromCartAsync(string userId, int productId)
         {
-            var cart = await _dbApiProjectContext.ShoppingCarts
-                .Include(c => c.Items)
-                .FirstOrDefaultAsync(c => c.UserId == userId);
-
+            var cart = await GetCartAsync(userId);
             if (cart == null)
-            {
                 throw new ArgumentException("Carrito no encontrado.");
-            }
-    
-            var cartItem = cart.Items.FirstOrDefault(i => i.ProductId == productId);
+
+            var cartItem = cart.CartItems.FirstOrDefault(i => i.ProductId == productId);
             if (cartItem != null)
             {
-                cart.Items.Remove(cartItem); // Elimina el item del carrito
+                cart.CartItems.Remove(cartItem); // Elimina el item del carrito
                 await _dbApiProjectContext.SaveChangesAsync();
             }
             else
@@ -111,9 +87,7 @@ namespace WebApiProject.Models
         // Elimina todo el carrito de un usuario
         public async Task DeleteCartAsync(string userId)
         {
-            var cart = await _dbApiProjectContext.ShoppingCarts
-                .FirstOrDefaultAsync(c => c.UserId == userId);
-
+            var cart = await GetCartAsync(userId);
             if (cart != null)
             {
                 _dbApiProjectContext.ShoppingCarts.Remove(cart);
@@ -125,14 +99,56 @@ namespace WebApiProject.Models
             }
         }
 
-        public Task<ShoppingCart> CreateCartAsync(ShoppingCartDto cartDto)
+        // Actualiza un item en el carrito (opcional, puedes implementarlo si es necesario)
+        public async Task UpdateCartItemAsync(string userId, CartItemDto itemDto)
         {
-            throw new NotImplementedException();
-        }
+            var cart = await GetCartAsync(userId);
+            if (cart == null)
+                throw new ArgumentException("Carrito no encontrado.");
 
-        public Task UpdateCartAsync(string userId, ShoppingCartDto cartDto)
+            var cartItem = cart.CartItems.FirstOrDefault(i => i.ProductId == itemDto.ProductId);
+            if (cartItem != null)
+            {
+                cartItem.Quantity = itemDto.Quantity; // Actualiza la cantidad
+                await _dbApiProjectContext.SaveChangesAsync();
+            }
+            else
+            {
+                throw new ArgumentException("El producto no está en el carrito.");
+            }
+        }
+        public async Task UpdateCartAsync(string userId, ShoppingCartDto cartDto)
         {
-            throw new NotImplementedException();
+            // Obtiene el carrito existente
+            var cart = await _dbApiProjectContext.ShoppingCarts
+                .Include(c => c.CartItems)
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (cart == null)
+            {
+                throw new ArgumentException("Carrito no encontrado.");
+            }
+
+            // Actualiza los items del carrito
+            cart.CartItems.Clear(); // Opcional: Limpia los items actuales
+
+            foreach (var itemDto in cartDto.CartItems)
+            {
+                var product = await _dbApiProjectContext.Products.FindAsync(itemDto.ProductId);
+                if (product == null)
+                {
+                    throw new ArgumentException($"El producto con ID {itemDto.ProductId} no existe.");
+                }
+
+                cart.CartItems.Add(new CartItem
+                {
+                    ProductId = itemDto.ProductId,
+                    Quantity = itemDto.Quantity,
+                    Product = product // Asigna el producto si es necesario
+                });
+            }
+
+            await _dbApiProjectContext.SaveChangesAsync();
         }
     }
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public class ShoppingCartDto
 {
-    public int Id { get; set; }
+    public int IdCart { get; set; }
     public string UserId { get; set; }
-    public List<CartItemDto> Items { get; set; } = new List<CartItemDto>();
+    public List<CartItemDto> CartItems { get; set; } = new List<CartItemDto>();
 }

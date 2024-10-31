@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 namespace WebApiProject.Models.Entities;
 
-public partial class UserData
+public partial class User
 {
-    public int IdUser { get; set; }
+    public string IdUser { get; set; }
 
     public string UserName { get; set; }
 
