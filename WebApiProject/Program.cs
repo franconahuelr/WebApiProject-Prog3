@@ -9,20 +9,30 @@ using WebApiProject.Interfaces;
 using WebApiProject.Models;
 using WebApiProject.Models.Context;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddAuthorization();
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<DbApiProjectContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("SQLChain"));
 });
 
+builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+    .AddEntityFrameworkStores<DbApiProjectContext>()
+    .AddDefaultTokenProviders();
+
 builder.Services.AddSingleton<Utilities>();
+
+builder.Services.AddScoped<RoleInitializer>();
+builder.Services.AddScoped<IShoppingCartService, ShoppingCartService>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("NewPolicy", app =>
+    {
+        app.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+    });
+});
 
 builder.Services.AddAuthentication(config => {
     config.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -38,25 +48,14 @@ builder.Services.AddAuthentication(config => {
         ValidateAudience = false,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero,
-        IssuerSigningKey = new SymmetricSecurityKey
-        (Encoding.UTF8.GetBytes(builder.Configuration["Jwt:key"]!))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:key"]!))
     };
 });
 
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
-    .AddEntityFrameworkStores<DbApiProjectContext>()
-    .AddDefaultTokenProviders();
-
-builder.Services.AddScoped<RoleInitializer>();
-builder.Services.AddScoped<IShoppingCartService, ShoppingCartService>();
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("NewPolicy", app =>
-    {
-        app.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
-    });
-});
+builder.Services.AddAuthorization();
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 

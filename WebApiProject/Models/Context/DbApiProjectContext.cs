@@ -54,7 +54,7 @@ public partial class DbApiProjectContext : IdentityDbContext<IdentityUser, Ident
 
             entity.Property(e => e.UserId)
                 .IsRequired()
-                .HasMaxLength(450); // Longitud típica para UserId en Identity
+                .HasMaxLength(450);
 
             // Configuración de la relación con CartItems
             entity.HasMany(sc => sc.CartItems)

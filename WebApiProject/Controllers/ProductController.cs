@@ -1,9 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using WebApiProject.Custom;
-using WebApiProject.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using WebApiProject.Models.Context;
 using WebApiProject.Models.Entities;
@@ -24,14 +20,26 @@ namespace WebApiProject.Controllers
         [HttpGet]
         [AllowAnonymous]
         [Route("List")]
-
-        public async Task<IActionResult> List()
+        public async Task<IActionResult> List(string? searchTerm = null)
         {
-            var list = await _dbApiProjectContext.Products.ToListAsync();
-            return StatusCode(StatusCodes.Status200OK, new { value = list });
+            var productsQuery = _dbApiProjectContext.Products.AsQueryable();
+
+            
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                productsQuery = productsQuery.Where(p => p.Name.Contains(searchTerm)); // Filtra por nombre
+            }
+
+            var list = await productsQuery.ToListAsync();
+
+            return Ok(new
+            {
+                isSuccess = true,
+                products = list
+            });
         }
         [HttpPost]
-     //   [Authorize(Roles = "admin")]
+       [Authorize(Roles = "admin")]
         [Route("Add")]
         public async Task<IActionResult> Add([FromBody] Product product)
         {
@@ -39,27 +47,20 @@ namespace WebApiProject.Controllers
             {
                 return BadRequest("El producto no puede ser nulo.");
             }
-
-            // Valida el modelo
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-
-
-            // Agrega el producto a la base de datos
             await _dbApiProjectContext.Products.AddAsync(product);
             await _dbApiProjectContext.SaveChangesAsync();
 
-            // Retorna un código de estado 201 y el producto creado
             return StatusCode(StatusCodes.Status200OK, new { message = "Producto agregado exitosamente.", product });
         }
         [HttpDelete]
-       // [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin")]
         [Route("Delete/{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            // Busca el producto por ID
             var product = await _dbApiProjectContext.Products.FindAsync(id);
 
             if (product == null)
@@ -67,7 +68,6 @@ namespace WebApiProject.Controllers
                 return NotFound(new { message = "Producto no encontrado." }); // 404 Not Found
             }
 
-            // Elimina el producto de la base de datos
             _dbApiProjectContext.Products.Remove(product);
             await _dbApiProjectContext.SaveChangesAsync();
 
@@ -81,7 +81,6 @@ namespace WebApiProject.Controllers
             {
                 return BadRequest("El producto no puede ser nulo.");
             }
-
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);

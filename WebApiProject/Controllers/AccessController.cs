@@ -33,7 +33,7 @@ namespace WebApiProject.Controllers
         [Route("Register")]
         public async Task<IActionResult> Register(RegisterUserDTO user)
         {
-            // Validar el modelo
+            
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -45,7 +45,7 @@ namespace WebApiProject.Controllers
                 Email = user.Email,
             };
 
-            // Intentar crear el usuario
+            
             var result = await _userManager.CreateAsync(userModel, user.Password);
 
             if (result.Succeeded)
@@ -57,7 +57,7 @@ namespace WebApiProject.Controllers
                 {
                     message = "Usuario registrado con éxito",
                     isSuccess = true,
-                    userId // Devuelve el ID generado
+                    userId
                 });
             }
             else
