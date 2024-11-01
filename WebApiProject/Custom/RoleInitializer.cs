@@ -1,50 +1,70 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.EntityFrameworkCore;
 using WebApiProject.Models.Context;
+using WebApiProject.Models.Entities;
 
 namespace WebApiProject.Custom
 {
     public class RoleInitializer
     {
-        public static async Task Initialize(IServiceProvider serviceProvider, Utilities utilities)
+        public static async Task Initialize(DbApiProjectContext context, Utilities utilities)
         {
-            var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-            var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
+            await context.Database.EnsureCreatedAsync();
 
             // Crear roles
-            string[] roleNames = { "admin", "user" };
-            foreach (var roleName in roleNames)
+            if (!await context.Roles.AnyAsync())
             {
-                var roleExist = await roleManager.RoleExistsAsync(roleName);
-                if (!roleExist)
+                var roles = new List<Role>
                 {
-                    await roleManager.CreateAsync(new IdentityRole(roleName));
-                }
+                    new Role { Name = "admin" },
+                    new Role { Name = "client" }
+                };
+
+                await context.Roles.AddRangeAsync(roles);
+                await context.SaveChangesAsync();
             }
 
             // Crear usuario administrador
             var adminEmail = "admin@example.com";
-            var adminUser = await userManager.FindByEmailAsync(adminEmail);
+            var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Email == adminEmail);
 
             if (adminUser == null)
             {
-                adminUser = new IdentityUser { UserName = "admin", Email = adminEmail };
                 string adminPassword = "Admin@123";
+                string encryptedPassword = utilities.EncryptSHA256(adminPassword);
 
-                // Crea el usuario con el UserManager (se encriptará automáticamente)
-                var result = await userManager.CreateAsync(adminUser, adminPassword);
+                adminUser = new User
+                {
+                    UserName = "admin",
+                    Email = adminEmail,
+                    Password = encryptedPassword,
+                    RoleId = (await context.Roles.FirstAsync(r => r.Name == "admin")).Id // Asignar rol de admin
+                };
 
-                if (result.Succeeded)
-                {
-                    await userManager.AddToRoleAsync(adminUser, "admin");
-                }
-                else
-                {
-                    foreach (var error in result.Errors)
-                    {
-                        Console.WriteLine($"Error al crear usuario: {error.Description}");
-                    }
-                }
+                await context.Users.AddAsync(adminUser);
+                await context.SaveChangesAsync();
             }
+
+            // Crear usuario cliente
+            var clientEmail = "client@example.com";
+            var clientUser = await context.Users.FirstOrDefaultAsync(u => u.Email == clientEmail);
+
+            if (clientUser == null)
+            {
+                string clientPassword = "Client@123";
+                string encryptedPassword = utilities.EncryptSHA256(clientPassword);
+
+                clientUser = new User
+                {
+                    UserName = "client",
+                    Email = clientEmail,
+                    Password = encryptedPassword,
+                    RoleId = (await context.Roles.FirstAsync(r => r.Name == "client")).Id // Asignar rol de client
+                };
+
+                await context.Users.AddAsync(clientUser);
+                await context.SaveChangesAsync();
+            }
+
         }
     }
 }

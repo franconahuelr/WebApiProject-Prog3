@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
+﻿
 using Microsoft.EntityFrameworkCore;
 using WebApiProject.Models.Entities;
 
 namespace WebApiProject.Models.Context;
 
-public partial class DbApiProjectContext : IdentityDbContext<IdentityUser, IdentityRole, string>
+public partial class DbApiProjectContext : DbContext
 {
     public DbApiProjectContext()
     {
@@ -19,9 +16,14 @@ public partial class DbApiProjectContext : IdentityDbContext<IdentityUser, Ident
     }
 
     public virtual DbSet<Product> Products { get; set; }
-
     public virtual DbSet<ShoppingCart> ShoppingCarts { get; set; }
     public virtual DbSet<CartItem> CartItems { get; set; }
+    public virtual DbSet<User> Users { get; set; }
+    public virtual DbSet<Client> Clients { get; set; }
+    public virtual DbSet<Admin> Admins { get; set; }
+
+    public DbSet<Role> Roles { get; set; }
+
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
 
@@ -71,6 +73,48 @@ public partial class DbApiProjectContext : IdentityDbContext<IdentityUser, Ident
                 .WithMany()
                 .HasForeignKey(ci => ci.ProductId)
                 .OnDelete(DeleteBehavior.Cascade); 
+        });
+        // Configuración para la entidad User
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.IdUser);
+            entity.ToTable("Users");
+            entity.Property(e => e.UserName)
+                .IsRequired()
+                .HasMaxLength(50);
+            entity.Property(e => e.Email)
+                .IsRequired()
+                .HasMaxLength(100);
+            entity.Property(e => e.Password)
+                .IsRequired();
+            entity.Property(e => e.RoleId)
+                .IsRequired();
+               
+        });
+        // Configuración para la entidad Client
+        modelBuilder.Entity<Client>(entity =>
+        {
+            entity.ToTable("Clients");
+            entity.HasMany(c => c.CartItems)
+                  .WithOne()
+                  .OnDelete(DeleteBehavior.Cascade); // Eliminar artículos del carrito si se elimina el cliente
+        });
+
+        // Configuración para la entidad Admin
+        modelBuilder.Entity<Admin>(entity =>
+        {
+            entity.ToTable("Admins");
+
+            entity.Property(e => e.Permissions)
+                .HasMaxLength(200);
+
+        });
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("Roles");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(50);
         });
 
     }

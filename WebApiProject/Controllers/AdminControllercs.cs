@@ -1,60 +1,40 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Authorization;
-using System.Threading.Tasks;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace WebApiProject.Controllers
 {
-    [Route("api/[controller]")]
-    [Authorize(Roles = "admin")] 
+    [Authorize(Roles = "admin")]
     [ApiController]
+    [Route("api/[controller]")]
     public class AdminController : ControllerBase
     {
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly IAdminService _adminService;
 
-        public AdminController(UserManager<IdentityUser> userManager)
+        public AdminController(IAdminService adminService)
         {
-            _userManager = userManager;
+            _adminService = adminService;
         }
 
-        // Método para obtener todos los usuarios
-        [HttpGet]
-        [Route("Users")]
-        public async Task<IActionResult> GetUsers()
+        [HttpGet("users")]
+        public async Task<IActionResult> GetAllUsers()
         {
-            var users = _userManager.Users.ToList();
-            var userDtos = users.Select(u => new
-            {
-                u.Id,
-                u.UserName,
-                u.Email,
-               
-            }).ToList();
-
-            return Ok(new { isSuccess = true, users = userDtos });
+            var users = await _adminService.GetAllUsersAsync();
+            return StatusCode(200, users); // 200 OK
         }
 
-        // Método para eliminar un usuario por su ID
-        [HttpDelete]
-        [Route("Users/{id}")]
-        public async Task<IActionResult> DeleteUser(string id)
+        [HttpDelete("users/{userId}")]
+        public async Task<IActionResult> DeleteUser(string userId)
         {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null)
+            try
             {
-                return NotFound(new { isSuccess = false, message = "Usuario no encontrado." });
+                await _adminService.DeleteUserAsync(userId);
+                return Ok(new { message = "El usuario ha sido eliminado con éxito." }); // 200 OK
             }
-
-            var result = await _userManager.DeleteAsync(user);
-            if (result.Succeeded)
+            catch (Exception ex)
             {
-                return Ok(new { isSuccess = true, message = "Usuario eliminado con éxito." });
+                // Manejo de errores
+                return StatusCode(500, new { message = "Error al eliminar el usuario.", details = ex.Message }); // 500 Internal Server Error
             }
-
-            return BadRequest(new { isSuccess = false, errors = result.Errors });
         }
     }
 }

@@ -20,14 +20,14 @@ namespace WebApiProject.Controllers
         [HttpGet]
         [AllowAnonymous]
         [Route("List")]
-        public async Task<IActionResult> List(string? searchTerm = null)
+        public async Task<IActionResult> ProductList(string? searchName = null)
         {
             var productsQuery = _dbApiProjectContext.Products.AsQueryable();
 
             
-            if (!string.IsNullOrEmpty(searchTerm))
+            if (!string.IsNullOrEmpty(searchName))
             {
-                productsQuery = productsQuery.Where(p => p.Name.Contains(searchTerm)); // Filtra por nombre
+                productsQuery = productsQuery.Where(p => p.Name.Contains(searchName)); // Filtra por nombre
             }
 
             var list = await productsQuery.ToListAsync();
@@ -41,7 +41,7 @@ namespace WebApiProject.Controllers
         [HttpPost]
        [Authorize(Roles = "admin")]
         [Route("Add")]
-        public async Task<IActionResult> Add([FromBody] Product product)
+        public async Task<IActionResult> AddProduct([FromBody] Product product)
         {
             if (product == null)
             {
@@ -59,7 +59,7 @@ namespace WebApiProject.Controllers
         [HttpDelete]
         [Authorize(Roles = "admin")]
         [Route("Delete/{id}")]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> DeleteProdcut(int id)
         {
             var product = await _dbApiProjectContext.Products.FindAsync(id);
 
@@ -75,7 +75,7 @@ namespace WebApiProject.Controllers
         }
         [HttpPut]
         [Route("Update/{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] Product updatedProduct)
+        public async Task<IActionResult> UpdateProduct(int id, [FromBody] Product updatedProduct)
         {
             if (updatedProduct == null)
             {

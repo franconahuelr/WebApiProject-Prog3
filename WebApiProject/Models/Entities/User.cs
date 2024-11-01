@@ -5,7 +5,7 @@ namespace WebApiProject.Models.Entities;
 
 public partial class User
 {
-    public string IdUser { get; set; }
+    public string IdUser { get; set; } = Guid.NewGuid().ToString();
 
     public string UserName { get; set; }
 
@@ -13,5 +13,7 @@ public partial class User
 
     public string Password { get; set; }
 
-    public bool IsAdmin { get; set; }
+    public int RoleId { get; set; } // ID del rol asociado
+
+    public Role Role { get; set; } // Navegación
 }

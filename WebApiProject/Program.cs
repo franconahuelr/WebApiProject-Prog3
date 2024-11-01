@@ -1,12 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Text;
-using WebApiProject.Controllers;
 using WebApiProject.Custom;
-using WebApiProject.Interfaces;
-using WebApiProject.Models;
 using WebApiProject.Models.Context;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,14 +14,13 @@ builder.Services.AddDbContext<DbApiProjectContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("SQLChain"));
 });
 
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
-    .AddEntityFrameworkStores<DbApiProjectContext>()
-    .AddDefaultTokenProviders();
 
-builder.Services.AddSingleton<Utilities>();
+builder.Services.AddScoped<Utilities>();
 
 builder.Services.AddScoped<RoleInitializer>();
-builder.Services.AddScoped<IShoppingCartService, ShoppingCartService>();
+//ilder.Services.AddScoped<IShoppingCartService, ShoppingCartService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IClientService, ClientService>();
 
 builder.Services.AddCors(options =>
 {
@@ -55,16 +51,46 @@ builder.Services.AddAuthentication(config => {
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "TPI Programacion 3 - Franco Romero - Comision 8 ", Version = "v1" });
+
+    // Configuración para agregar el esquema de autenticación
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Por favor ingrese su token JWT",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
 
 var app = builder.Build();
 
-// Initializing roles
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var utilities = services.GetRequiredService<Utilities>();
-    await RoleInitializer.Initialize(services, utilities);
+    var context = services.GetRequiredService<DbApiProjectContext>();
+    var configuration = services.GetRequiredService<IConfiguration>();
+    var utilities = new Utilities(configuration, context);
+
+    await RoleInitializer.Initialize(context, utilities);
 }
 
 // Configure the HTTP request pipeline.

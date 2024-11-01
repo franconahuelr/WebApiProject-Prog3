@@ -1,21 +1,23 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using WebApiProject.Models.Context;
+using WebApiProject.Models.Entities;
 
 namespace WebApiProject.Custom
 {
     public class Utilities
     {
         private readonly IConfiguration _configuration;
+        private readonly DbApiProjectContext _dbApiProjectContext;
 
-        public Utilities(IConfiguration configuration)
+        public Utilities(IConfiguration configuration, DbApiProjectContext dbApiProjectContext)
         {
             _configuration = configuration;
+            _dbApiProjectContext = dbApiProjectContext;
         }
-
         public string EncryptSHA256(string text)
         {
             using (SHA256 sha256Hash = SHA256.Create())
@@ -33,20 +35,24 @@ namespace WebApiProject.Custom
                 return builder.ToString();
             }
         }
-
-        public string GenerateJWT(IdentityUser user)
+        public string GenerateJWT(User user)
         {
-            // Crear la información del usuario para el token
-            var userClaims = new[]
+            var userClaims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.IdUser),
+            new Claim(ClaimTypes.Email, user.Email)
+        };
+
+            // Obtener el rol del usuario
+            var role = _dbApiProjectContext.Roles.Find(user.RoleId); // Usa FindAsync si es necesario
+            if (role != null)
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Email, user.Email!)
-            };
+                userClaims.Add(new Claim(ClaimTypes.Role, role.Name));
+            }
 
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:key"]!));
-            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256Signature);
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:key"]));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-            // Crear detalle del token
             var jwtConfig = new JwtSecurityToken(
                 claims: userClaims,
                 expires: DateTime.UtcNow.AddMinutes(10),
